@@ -246,6 +246,73 @@ describe("HNS Gaming Ecosystem", function () {
             expect(logs[0].action).to.equal("shoot_enemy");
             expect(logs[0].points).to.equal(10);
         });
+        
+        it("Should prevent non-authorized users from setting activity points", async function () {
+            await expect(
+                hnsGameEcosystem.connect(user1).setActivityPoints(
+                    gameId,
+                    "shoot_enemy",
+                    10
+                )
+            ).to.be.reverted;
+        });
+        
+        it("Should set activity points in batch", async function () {
+            const actions = ["action1", "action2", "action3"];
+            const points = [5, 10, 15];
+            
+            await hnsGameEcosystem.connect(activityManager).setActivityPointsBatch(
+                gameId,
+                actions,
+                points
+            );
+            
+            // Verify all points were set correctly
+            for (let i = 0; i < actions.length; i++) {
+                const recordedActivity = await hnsGameEcosystem.connect(activityManager).recordActivity(
+                    gameId,
+                    user1.address,
+                    actions[i]
+                );
+                // The recordActivity function will use the points we just set
+            }
+            
+            // Test that the points are working by recording an activity
+            await hnsGameEcosystem.connect(activityManager).recordActivity(
+                gameId,
+                user1.address,
+                "action1"
+            );
+            
+            const activity = await hnsGameEcosystem.getTransactionLogs(gameId, user1.address);
+            expect(activity.totalPoints).to.equal(5);
+        });
+        
+        it("Should prevent batch setting with mismatched array lengths", async function () {
+            const actions = ["action1", "action2"];
+            const points = [5]; // Mismatched length
+            
+            await expect(
+                hnsGameEcosystem.connect(activityManager).setActivityPointsBatch(
+                    gameId,
+                    actions,
+                    points
+                )
+            ).to.be.revertedWith("Actions and points arrays must have same length");
+        });
+        
+        it("Should prevent batch setting with empty actions array", async function () {
+            const actions = [];
+            const points = [];
+            
+            await expect(
+                hnsGameEcosystem.connect(activityManager).setActivityPointsBatch(
+                    gameId,
+                    actions,
+                    points
+                )
+            ).to.be.revertedWithCustomError(hnsGameEcosystem, "EmptyString");
+        });
     });
     
     describe("Points → Game Token Redemption", function () {

@@ -331,6 +331,39 @@ contract HNSGameEcosystem is ERC1155, AccessControl, Pausable, ReentrancyGuard {
         activityPointValues[gameId][action] = points;
         emit ActivityPointsSet(gameId, action, points);
     }
+
+    /**
+     * @dev Set multiple activity point values for a game in batch
+     * @param gameId ID of the game
+     * @param actions Array of action names
+     * @param points Array of points to award for each action
+     */
+    function setActivityPointsBatch(
+        uint256 gameId,
+        string[] calldata actions,
+        uint256[] calldata points
+    ) 
+        external 
+        onlyRole(ACTIVITY_MANAGER_ROLE)
+    {
+        if (gameId == 0 || gameId >= nextGameId) {
+            revert InvalidGameId(gameId, nextGameId - 1);
+        }
+        if (actions.length == 0) revert EmptyString("actions array");
+        if (actions.length != points.length) {
+            revert("Actions and points arrays must have same length");
+        }
+        
+        for (uint256 i = 0; i < actions.length; i++) {
+            if (bytes(actions[i]).length == 0) revert EmptyString("action");
+            if (points[i] > MAX_ACTIVITY_POINTS) {
+                revert InvalidActivityPoints(points[i], MAX_ACTIVITY_POINTS);
+            }
+            
+            activityPointValues[gameId][actions[i]] = points[i];
+            emit ActivityPointsSet(gameId, actions[i], points[i]);
+        }
+    }
     
     // ============ Points → Game Token Redemption ============
     /**

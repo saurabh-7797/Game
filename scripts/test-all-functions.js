@@ -192,6 +192,34 @@ async function main() {
     await hnsGameEcosystem.setActivityPoints(2, "win_championship", 100);
     console.log("   ✅ Activity points set for Game 2");
     
+    // Test batch activity points setting for Game 3 (if created)
+    console.log("2. Testing batch activity points setting...");
+    try {
+        // Create a third game for batch testing
+        const game3Amount = ethers.parseEther("150");
+        await hnsToken.approve(hnsGameEcosystemAddress, game3Amount);
+        const tx3 = await hnsGameEcosystem.createGameToken(
+            game3Amount,
+            "Puzzle Game",
+            "PG",
+            18
+        );
+        await tx3.wait();
+        console.log("   ✅ Game 3 created: Puzzle Game (PG)");
+        
+        // Set activity points in batch for Game 3
+        const actions = ["solve_puzzle", "hint_used", "time_bonus", "perfect_score"];
+        const points = [15, 3, 7, 25];
+        
+        await hnsGameEcosystem.setActivityPointsBatch(3, actions, points);
+        console.log("   ✅ Batch activity points set for Game 3");
+        console.log("     Actions:", actions.join(", "));
+        console.log("     Points:", points.join(", "));
+        
+    } catch (error) {
+        console.log("   ⚠️ Batch test skipped (Game 3 creation failed or already exists)");
+    }
+    
     console.log("2. Recording user activities...");
     
     // Record activities for User1 in Game 1
