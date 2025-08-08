@@ -307,6 +307,58 @@ contract HNSGameEcosystem is ERC1155, AccessControl, Pausable, ReentrancyGuard {
     }
     
     /**
+     * @dev Record multiple user activities in batch and award points
+     * @param gameId ID of the game
+     * @param user Address of the user
+     * @param actions Array of actions performed
+     */
+    function recordActivityBatch(
+        uint256 gameId,
+        address user,
+        string[] calldata actions
+    ) 
+        external 
+        onlyRole(ACTIVITY_MANAGER_ROLE)
+        whenNotPaused 
+    {
+        if (gameId == 0 || gameId >= nextGameId) {
+            revert InvalidGameId(gameId, nextGameId - 1);
+        }
+        if (user == address(0)) revert ZeroAddress();
+        if (actions.length == 0) revert EmptyString("actions array");
+        
+        GameTokenInfo storage gameInfo = gameTokens[gameId];
+        if (!gameInfo.active) revert GameTokenNotActive(gameId);
+        
+        UserActivity storage userActivity = userActivities[user][gameId];
+        uint256 totalPointsAwarded = 0;
+        
+        for (uint256 i = 0; i < actions.length; i++) {
+            if (bytes(actions[i]).length == 0) revert EmptyString("action");
+            
+            uint256 points = activityPointValues[gameId][actions[i]];
+            if (points == 0) revert ActivityNotConfigured(gameId, actions[i]);
+            if (points > MAX_ACTIVITY_POINTS) {
+                revert InvalidActivityPoints(points, MAX_ACTIVITY_POINTS);
+            }
+            
+            totalPointsAwarded += points;
+            
+            // Store activity log
+            userActivity.activities.push(ActivityLog({
+                gameId: gameId,
+                action: actions[i],
+                points: points,
+                timestamp: block.timestamp
+            }));
+            
+            emit ActivityRecorded(gameId, user, actions[i], points);
+        }
+        
+        userActivity.totalPoints += totalPointsAwarded;
+    }
+    
+    /**
      * @dev Set activity point values for a game
      * @param gameId ID of the game
      * @param action Action name
